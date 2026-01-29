@@ -4,8 +4,9 @@ import sanitizeHtml from "sanitize-html";
 import { marked } from "marked";
 import { listDocs, readDoc } from "@/lib/docs";
 
-export default function DocPage({ params }: { params: { slug: string } }) {
-  const doc = readDoc(params.slug);
+export default async function DocPage({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params;
+  const doc = readDoc(slug);
   const docs = listDocs();
 
   if (!doc) return notFound();
