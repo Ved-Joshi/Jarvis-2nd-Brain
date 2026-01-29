@@ -10,6 +10,9 @@ export type TaskStatus = "recurring" | "backlog" | "in_progress" | "review";
 export type Task = {
   id: string;
   title: string;
+  description?: string;
+  project?: string;
+  output?: string;
   status: TaskStatus;
   assignee: "Ved" | "Jarvis";
   tags: string[];
