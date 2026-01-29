@@ -1,8 +1,8 @@
-import Link from "next/link";
 import { notFound } from "next/navigation";
 import sanitizeHtml from "sanitize-html";
 import { marked } from "marked";
 import DocsShell from "@/components/DocsShell";
+import DocsList from "@/components/DocsList";
 import { listDocs, readDoc } from "@/lib/docs";
 
 export default function DocPage({ params }: { params: { slug: string } }) {
@@ -25,14 +25,7 @@ export default function DocPage({ params }: { params: { slug: string } }) {
       <div className="content">
         <aside className="sidebar">
           <div className="hint">Docs folder: C:\Users\jarvi\SecondBrain\docs</div>
-          <div className="doc-list">
-            {docs.map((d) => (
-              <Link key={d.slug} href={`/doc/${d.slug}`} className="doc-item">
-                <div className="doc-title">{d.title}</div>
-                <div className="doc-meta">Updated {new Date(d.updatedAt).toLocaleString()}</div>
-              </Link>
-            ))}
-          </div>
+          <DocsList docs={docs} activeSlug={doc.slug} />
         </aside>
         <main className="main">
           <div className="hero">{doc.title}</div>

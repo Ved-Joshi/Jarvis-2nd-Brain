@@ -1,5 +1,5 @@
-import Link from "next/link";
 import DocsShell from "@/components/DocsShell";
+import DocsList from "@/components/DocsList";
 import { listDocs } from "@/lib/docs";
 
 export default function Home() {
@@ -10,17 +10,11 @@ export default function Home() {
       <div className="content">
         <aside className="sidebar">
           <div className="hint">Docs folder: C:\Users\jarvi\SecondBrain\docs</div>
-          <div className="doc-list">
-            {docs.length === 0 && (
-              <div className="empty-state">No documents yet. Drop a .md file into the docs folder.</div>
-            )}
-            {docs.map((doc) => (
-              <Link key={doc.slug} href={`/doc/${doc.slug}`} className="doc-item">
-                <div className="doc-title">{doc.title}</div>
-                <div className="doc-meta">Updated {new Date(doc.updatedAt).toLocaleString()}</div>
-              </Link>
-            ))}
-          </div>
+          {docs.length === 0 ? (
+            <div className="empty-state">No documents yet. Drop a .md file into the docs folder.</div>
+          ) : (
+            <DocsList docs={docs} />
+          )}
         </aside>
         <main className="main">
           <div className="hero">Your living knowledge base</div>

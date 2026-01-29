@@ -125,6 +125,27 @@ a {
   margin-bottom: 16px;
 }
 
+.doc-list-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.doc-search {
+  padding: 8px 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: 12px;
+}
+
+.doc-count {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: -2px;
+}
+
 .doc-list {
   display: flex;
   flex-direction: column;
@@ -143,6 +164,11 @@ a {
   background: var(--panel-2);
   border-color: rgba(255, 255, 255, 0.08);
   transform: translateY(-1px);
+}
+
+.doc-item.active {
+  background: rgba(124, 155, 255, 0.12);
+  border-color: rgba(124, 155, 255, 0.3);
 }
 
 .doc-title {
