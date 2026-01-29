@@ -20,6 +20,7 @@ function safeReadDir(dir: string) {
 }
 
 export function listDocs(): DocMeta[] {
+  ensureDailyJournal();
   const files = safeReadDir(DOCS_DIR)
     .filter((f) => f.toLowerCase().endsWith(".md"))
     .map((filename) => {
@@ -63,4 +64,24 @@ function extractTitle(markdown: string) {
 
 function slugToTitle(slug: string) {
   return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+function todayKey() {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+export function ensureDailyJournal() {
+  const filename = `journal-${todayKey()}.md`;
+  const full = path.join(DOCS_DIR, filename);
+  if (fs.existsSync(full)) return;
+  const content = `# Daily Journal — ${todayKey()}\n\n## Highlights\n- \n\n## Notes\n- \n`;
+  try {
+    fs.writeFileSync(full, content);
+  } catch {
+    // ignore
+  }
 }
