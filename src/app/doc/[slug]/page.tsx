@@ -4,6 +4,15 @@ import sanitizeHtml from "sanitize-html";
 import { marked } from "marked";
 import { listDocs, readDoc } from "@/lib/docs";
 
+/**
+ * Render the documentation page for a given slug, showing a sidebar of all docs and the requested doc's content.
+ *
+ * The component converts the doc's Markdown to HTML, sanitizes it (allowing images and specific attributes), and injects it into the main view. If the document cannot be found, the route short-circuits to a 404 page.
+ *
+ * @param params - Route parameters
+ * @param params.slug - The slug identifying which document to load
+ * @returns The rendered documentation page element for the requested slug
+ */
 export default function DocPage({ params }: { params: { slug: string } }) {
   const doc = readDoc(params.slug);
   const docs = listDocs();

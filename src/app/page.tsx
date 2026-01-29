@@ -1,6 +1,15 @@
 import Link from "next/link";
 import { listDocs } from "@/lib/docs";
 
+/**
+ * Render the application's main page with a two-pane layout: a sidebar listing documents and a main content area.
+ *
+ * The sidebar displays the app brand, a hint for the docs folder, and a list of documents returned by `listDocs()`
+ * (or an empty-state prompt when no documents exist). The main area shows the hero, a descriptive subhero, and a
+ * placeholder prompting the user to pick a document.
+ *
+ * @returns The React element for the page containing the sidebar and main content layout
+ */
 export default function Home() {
   const docs = listDocs();
 
