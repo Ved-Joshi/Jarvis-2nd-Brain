@@ -35,8 +35,16 @@ export function listDocs(): DocMeta[] {
 }
 
 export function readDoc(slug: string) {
+  // Prevent path traversal by rejecting slugs with path separators
+  if (slug.includes('/') || slug.includes('\\') || slug.includes('..')) {
+    return null;
+  }
   const filename = `${slug}.md`;
   const full = path.join(DOCS_DIR, filename);
+  // Additional check: ensure resolved path is within DOCS_DIR
+  if (!path.resolve(full).startsWith(path.resolve(DOCS_DIR))) {
+    return null;
+  }
   if (!fs.existsSync(full)) return null;
   const raw = fs.readFileSync(full, "utf-8");
   return {
