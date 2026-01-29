@@ -11,6 +11,14 @@ export type DocMeta = {
   filename: string;
 };
 
+function ensureDocsDir() {
+  try {
+    if (!fs.existsSync(DOCS_DIR)) fs.mkdirSync(DOCS_DIR, { recursive: true });
+  } catch {
+    // ignore
+  }
+}
+
 function safeReadDir(dir: string) {
   try {
     return fs.readdirSync(dir);
@@ -20,6 +28,7 @@ function safeReadDir(dir: string) {
 }
 
 export function listDocs(): DocMeta[] {
+  ensureDocsDir();
   ensureDailyJournal();
   const files = safeReadDir(DOCS_DIR)
     .filter((f) => f.toLowerCase().endsWith(".md"))
@@ -35,7 +44,9 @@ export function listDocs(): DocMeta[] {
   return files;
 }
 
-export function readDoc(slug: string) {
+export function readDoc(slug?: string) {
+  ensureDocsDir();
+  if (!slug) return null;
   // Prevent path traversal by rejecting slugs with path separators
   if (slug.includes('/') || slug.includes('\\') || slug.includes('..')) {
     return null;

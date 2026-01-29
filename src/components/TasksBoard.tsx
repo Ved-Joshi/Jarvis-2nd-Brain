@@ -8,6 +8,9 @@ type TaskStatus = "recurring" | "backlog" | "in_progress" | "review";
 type Task = {
   id: string;
   title: string;
+  description?: string;
+  project?: string;
+  output?: string;
   status: TaskStatus;
   assignee: "Ved" | "Jarvis";
   tags: string[];
@@ -36,6 +39,16 @@ const priorityColor: Record<Task["priority"], string> = {
 export default function TasksBoard({ docs }: { docs: { slug: string; title: string }[] }) {
   const [store, setStore] = useState<Store>({ tasks: [], activity: [] });
   const [dragId, setDragId] = useState<string | null>(null);
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({
+    title: "",
+    description: "",
+    assignee: "Jarvis" as Task["assignee"],
+    priority: "medium" as Task["priority"],
+    status: "backlog" as TaskStatus,
+    project: "",
+    output: "",
+  });
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -81,19 +94,35 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
   };
 
   const addTask = () => {
-    const title = prompt("Task title?");
-    if (!title) return;
+    setForm({
+      title: "",
+      description: "",
+      assignee: "Jarvis",
+      priority: "medium",
+      status: "backlog",
+      project: "",
+      output: "",
+    });
+    setShowModal(true);
+  };
+
+  const createTask = () => {
+    if (!form.title.trim()) return;
     const task: Task = {
       id: crypto.randomUUID(),
-      title,
-      status: "backlog",
-      assignee: "Jarvis",
+      title: form.title.trim(),
+      description: form.description.trim() || undefined,
+      project: form.project.trim() || undefined,
+      output: form.output.trim() || undefined,
+      status: form.status,
+      assignee: form.assignee,
       tags: [],
-      priority: "medium",
+      priority: form.priority,
       createdAt: Date.now(),
       updatedAt: Date.now(),
     };
-    save([task, ...store.tasks], `Created "${title}"`);
+    save([task, ...store.tasks], `Created "${task.title}"`);
+    setShowModal(false);
   };
 
   return (
@@ -105,6 +134,93 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
         </div>
         <button className="btn" onClick={addTask}>New Task</button>
       </div>
+
+      {showModal && (
+        <div className="modal-overlay" onClick={() => setShowModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">New Task</div>
+            <div className="modal-grid">
+              <label>
+                <span>Title</span>
+                <input
+                  value={form.title}
+                  onChange={(e) => setForm({ ...form, title: e.target.value })}
+                  placeholder="Task title"
+                />
+              </label>
+              <label>
+                <span>Description</span>
+                <textarea
+                  rows={3}
+                  value={form.description}
+                  onChange={(e) => setForm({ ...form, description: e.target.value })}
+                  placeholder="Short description"
+                />
+              </label>
+              <label>
+                <span>Assignee</span>
+                <div className="segmented">
+                  {(["Ved", "Jarvis"] as Task["assignee"][]).map((a) => (
+                    <button
+                      key={a}
+                      type="button"
+                      className={`seg-btn ${form.assignee === a ? "active" : ""}`}
+                      onClick={() => setForm({ ...form, assignee: a })}
+                    >
+                      {a}
+                    </button>
+                  ))}
+                </div>
+              </label>
+              <label>
+                <span>Priority</span>
+                <select
+                  value={form.priority}
+                  onChange={(e) => setForm({ ...form, priority: e.target.value as Task["priority"] })}
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select
+                  value={form.status}
+                  onChange={(e) => setForm({ ...form, status: e.target.value as TaskStatus })}
+                >
+                  <option value="recurring">Recurring</option>
+                  <option value="backlog">Backlog</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="review">Review</option>
+                </select>
+              </label>
+              <label>
+                <span>Project</span>
+                <input
+                  value={form.project}
+                  onChange={(e) => setForm({ ...form, project: e.target.value })}
+                  placeholder="Project name"
+                />
+              </label>
+              <label>
+                <span>Output / Deliverable</span>
+                <input
+                  value={form.output}
+                  onChange={(e) => setForm({ ...form, output: e.target.value })}
+                  placeholder="What does done look like?"
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="ghost-btn" onClick={() => setShowModal(false)}>Cancel</button>
+              <button className="btn" onClick={createTask} disabled={!form.title.trim()}>
+                Create Task
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       <div className="kanban">
         {columns.map((col) => (
@@ -125,6 +241,15 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
                   onDragEnd={() => setDragId(null)}
                 >
                   <div className="card-title">{t.title}</div>
+                  {t.description && (
+                    <div className="card-desc">{t.description}</div>
+                  )}
+                  {(t.project || t.output) && (
+                    <div className="card-mini">
+                      {t.project && <span className="pill">📦 {t.project}</span>}
+                      {t.output && <span className="pill">🎯 {t.output}</span>}
+                    </div>
+                  )}
                   <div className="card-meta">
                     <span className="avatar" data-assignee={t.assignee}>
                       {t.assignee === "Ved" ? "🧑🏽‍💻" : "🤖"}
@@ -176,11 +301,11 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
       <div className="task-side">
         <div className="panel">
           <div className="panel-title">Jarvis Suggestions</div>
-          <ul className="suggestions">
-            <li>Review backlog and pick 1 high‑impact task</li>
-            <li>Link key tasks to docs for context</li>
-            <li>Mark recurring tasks you want auto‑reset</li>
-          </ul>
+          <div className="suggestion-cards">
+            <div className="suggestion-card">Review backlog and pick 1 high‑impact task</div>
+            <div className="suggestion-card">Link key tasks to docs for context</div>
+            <div className="suggestion-card">Mark recurring tasks you want auto‑reset</div>
+          </div>
         </div>
         <div className="panel">
           <div className="panel-title">Activity</div>

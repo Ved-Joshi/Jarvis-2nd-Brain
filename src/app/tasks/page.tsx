@@ -6,7 +6,7 @@ export default function TasksPage() {
   const docs = listDocs().map((d) => ({ slug: d.slug, title: d.title }));
   return (
     <DocsShell>
-      <div className="content">
+      <div className="tasks-page">
         <TasksBoard docs={docs} />
       </div>
     </DocsShell>
