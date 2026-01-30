@@ -72,8 +72,17 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
       review: [],
     };
     for (const t of store.tasks) map[t.status].push(t);
+    for (const key of Object.keys(map) as TaskStatus[]) {
+      map[key].sort((a, b) => b.updatedAt - a.updatedAt);
+    }
     return map;
   }, [store.tasks]);
+
+  const formatUpdated = (ts: number) =>
+    new Date(ts).toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+    });
 
   const save = (tasks: Task[], activityText?: string) => {
     fetch("/api/tasks", {
@@ -419,6 +428,7 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
                       ))}
                     </span>
                   </div>
+                  <div className="card-updated">Updated {formatUpdated(t.updatedAt)}</div>
                   <div className="card-actions">
                     <button className="link-btn" onClick={() => {
                       const tag = prompt("Add a tag (comma separated)?", t.tags.join(","));
