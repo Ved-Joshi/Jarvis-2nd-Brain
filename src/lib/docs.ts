@@ -111,8 +111,27 @@ function extractTitle(markdown: string) {
   return match?.[1]?.trim();
 }
 
-function slugToTitle(slug: string) {
+export function slugToTitle(slug: string) {
   return slug.replace(/[-_]/g, " ").replace(/\b\w/g, (m) => m.toUpperCase());
+}
+
+export function appendToDoc(slug: string, content: string, title?: string) {
+  ensureDocsDir();
+  if (!slug) return { ok: false, error: "Missing slug" } as const;
+  if (slug.includes("/") || slug.includes("\\") || slug.includes("..")) {
+    return { ok: false, error: "Invalid slug" } as const;
+  }
+  const filename = `${slug}.md`;
+  const full = path.join(DOCS_DIR, filename);
+  if (!path.resolve(full).startsWith(path.resolve(DOCS_DIR))) {
+    return { ok: false, error: "Invalid path" } as const;
+  }
+  if (!fs.existsSync(full)) {
+    const header = `# ${title?.trim() || slugToTitle(slug)}\n\n`;
+    fs.writeFileSync(full, header);
+  }
+  fs.appendFileSync(full, `\n${content.trim()}\n`);
+  return { ok: true } as const;
 }
 
 function todayKey() {

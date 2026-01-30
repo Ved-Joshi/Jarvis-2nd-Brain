@@ -49,6 +49,13 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
     project: "",
     output: "",
   });
+  const [workModeTask, setWorkModeTask] = useState<Task | null>(null);
+  const [workModeForm, setWorkModeForm] = useState({
+    docSlug: "",
+    plan: "",
+    nextSteps: "",
+  });
+  const [workModeSaving, setWorkModeSaving] = useState(false);
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -123,6 +130,99 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
     };
     save([task, ...store.tasks], `Created "${task.title}"`);
     setShowModal(false);
+  };
+
+  const normalizeLines = (text: string) =>
+    text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+  const toBullets = (text: string) => {
+    const lines = normalizeLines(text);
+    return lines.length ? lines.map((line) => `- ${line}`).join("\n") : "-";
+  };
+
+  const slugify = (value: string) =>
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, "")
+      .replace(/[\s-]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+  const ensureUniqueSlug = (base: string) => {
+    const existing = new Set(docs.map((d) => d.slug));
+    if (!existing.has(base)) return base;
+    let i = 2;
+    while (existing.has(`${base}-${i}`)) i += 1;
+    return `${base}-${i}`;
+  };
+
+  const openWorkMode = (task: Task) => {
+    setWorkModeTask(task);
+    setWorkModeForm({
+      docSlug: task.docSlug || "",
+      plan: "",
+      nextSteps: "",
+    });
+  };
+
+  const saveWorkMode = async () => {
+    if (!workModeTask) return;
+    const plan = workModeForm.plan.trim();
+    const nextSteps = workModeForm.nextSteps.trim();
+    if (!plan && !nextSteps) return;
+
+    let docSlug = workModeForm.docSlug.trim();
+    if (!docSlug) {
+      const base = slugify(workModeTask.title) || "work-mode";
+      docSlug = ensureUniqueSlug(base);
+    }
+
+    const planBlock = toBullets(plan);
+    const nextBlock = toBullets(nextSteps);
+    const workModeOutput = `Work Mode Plan:\n${planBlock}\n\nNext Steps:\n${nextBlock}`;
+    const mergedOutput = workModeTask.output
+      ? `${workModeTask.output}\n\n---\n\n${workModeOutput}`
+      : workModeOutput;
+
+    const timestamp = new Date().toLocaleString();
+    const docContent = `## 🧠 Work Mode — ${workModeTask.title}\n_${timestamp}_\n\n**Plan**\n${planBlock}\n\n**Next steps**\n${nextBlock}`;
+
+    setWorkModeSaving(true);
+    try {
+      const res = await fetch("/api/docs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          slug: docSlug,
+          content: docContent,
+          title: workModeTask.title,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        alert(data?.error || "Failed to update linked doc.");
+        return;
+      }
+      const next = store.tasks.map((t) =>
+        t.id === workModeTask.id
+          ? {
+              ...t,
+              output: mergedOutput,
+              docSlug,
+              status: "in_progress",
+              updatedAt: Date.now(),
+            }
+          : t
+      );
+      save(next, `Started "${workModeTask.title}" work mode`);
+      setWorkModeTask(null);
+      setWorkModeForm({ docSlug: "", plan: "", nextSteps: "" });
+    } finally {
+      setWorkModeSaving(false);
+    }
   };
 
   return (
@@ -222,6 +322,60 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
         </div>
       )}
 
+      {workModeTask && (
+        <div className="modal-overlay" onClick={() => setWorkModeTask(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-title">Work Mode — {workModeTask.title}</div>
+            <div className="modal-grid single">
+              <label>
+                <span>Linked Doc Slug (optional)</span>
+                <input
+                  list="doc-slugs"
+                  value={workModeForm.docSlug}
+                  onChange={(e) => setWorkModeForm({ ...workModeForm, docSlug: e.target.value })}
+                  placeholder="Leave blank to auto-create"
+                />
+                <datalist id="doc-slugs">
+                  {docs.map((doc) => (
+                    <option key={doc.slug} value={doc.slug} />
+                  ))}
+                </datalist>
+              </label>
+              <label>
+                <span>Plan</span>
+                <textarea
+                  rows={4}
+                  value={workModeForm.plan}
+                  onChange={(e) => setWorkModeForm({ ...workModeForm, plan: e.target.value })}
+                  placeholder="Outline the plan (one item per line)"
+                />
+              </label>
+              <label>
+                <span>Next Steps</span>
+                <textarea
+                  rows={4}
+                  value={workModeForm.nextSteps}
+                  onChange={(e) => setWorkModeForm({ ...workModeForm, nextSteps: e.target.value })}
+                  placeholder="What should happen next? (one item per line)"
+                />
+              </label>
+            </div>
+            <div className="modal-actions">
+              <button className="ghost-btn" onClick={() => setWorkModeTask(null)}>
+                Cancel
+              </button>
+              <button
+                className="btn"
+                onClick={saveWorkMode}
+                disabled={workModeSaving}
+              >
+                {workModeSaving ? "Saving..." : "Start"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="kanban">
         {columns.map((col) => (
           <div
@@ -247,7 +401,11 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
                   {(t.project || t.output) && (
                     <div className="card-mini">
                       {t.project && <span className="pill">📦 {t.project}</span>}
-                      {t.output && <span className="pill">🎯 {t.output}</span>}
+                      {t.output && (
+                        <span className="pill pill-output">
+                          🎯 {t.output.split("\n").find((line) => line.trim()) || t.output}
+                        </span>
+                      )}
                     </div>
                   )}
                   <div className="card-meta">
@@ -281,6 +439,7 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
                         updateTask(t.id, { assignee });
                       }
                     }}>Assignee</button>
+                    <button className="link-btn" onClick={() => openWorkMode(t)}>Start</button>
                     <button className="link-btn" onClick={() => {
                       const slug = prompt("Link to doc slug?", t.docSlug || "");
                       if (slug !== null) updateTask(t.id, { docSlug: slug || undefined });
