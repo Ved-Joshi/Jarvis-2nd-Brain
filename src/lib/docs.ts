@@ -68,6 +68,44 @@ export function readDoc(slug?: string) {
   };
 }
 
+export function slugify(input: string) {
+  return input
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .trim();
+}
+
+export function ensureTaskDoc({
+  title,
+  planContent,
+  slug,
+}: {
+  title: string;
+  planContent: string;
+  slug?: string;
+}) {
+  ensureDocsDir();
+  const safeSlug = slug || `task-${slugify(title) || "untitled"}`;
+  if (safeSlug.includes('/') || safeSlug.includes('\\') || safeSlug.includes('..')) return null;
+  const filename = `${safeSlug}.md`;
+  const full = path.join(DOCS_DIR, filename);
+  const stamped = `${planContent}\n`;
+  try {
+    if (!fs.existsSync(full)) {
+      const content = `# Task — ${title}\n\n${stamped}`;
+      fs.writeFileSync(full, content);
+    } else {
+      const existing = fs.readFileSync(full, "utf-8");
+      const merged = `${existing.trimEnd()}\n\n---\n\n${stamped}`;
+      fs.writeFileSync(full, merged);
+    }
+  } catch {
+    return null;
+  }
+  return safeSlug;
+}
+
 function extractTitle(markdown: string) {
   const match = markdown.match(/^#\s+(.+)$/m);
   return match?.[1]?.trim();
