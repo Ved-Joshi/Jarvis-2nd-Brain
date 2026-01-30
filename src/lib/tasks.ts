@@ -74,7 +74,7 @@ export function resetRecurring(store: TaskStore) {
   for (const task of store.tasks) {
     if (!task.recurring) continue;
     if (task.recurring.lastReset !== key) {
-      task.status = "recurring";
+      task.status = "backlog";
       task.recurring.lastReset = key;
       task.updatedAt = Date.now();
       changed = true;
