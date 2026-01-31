@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 
 type TaskStatus = "recurring" | "backlog" | "in_progress" | "review";
@@ -48,7 +48,9 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
     status: "backlog" as TaskStatus,
     project: "",
     output: "",
+    docSlug: "",
   });
+  const titleRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     fetch("/api/tasks")
@@ -56,6 +58,13 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
       .then(setStore)
       .catch(() => setStore({ tasks: [], activity: [] }));
   }, []);
+
+  useEffect(() => {
+    if (showModal) {
+      const id = setTimeout(() => titleRef.current?.focus(), 0);
+      return () => clearTimeout(id);
+    }
+  }, [showModal]);
 
   const byStatus = useMemo(() => {
     const map: Record<TaskStatus, Task[]> = {
@@ -70,6 +79,11 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
     }
     return map;
   }, [store.tasks]);
+
+  const docOptions = useMemo(
+    () => [...docs].sort((a, b) => a.title.localeCompare(b.title)),
+    [docs]
+  );
 
   const formatUpdated = (ts: number) =>
     new Date(ts).toLocaleDateString(undefined, {
@@ -111,6 +125,7 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
       status: "backlog",
       project: "",
       output: "",
+      docSlug: "",
     });
     setShowModal(true);
   };
@@ -123,6 +138,7 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
       description: form.description.trim() || undefined,
       project: form.project.trim() || undefined,
       output: form.output.trim() || undefined,
+      docSlug: form.docSlug.trim() || undefined,
       status: form.status,
       assignee: form.assignee,
       tags: [],
@@ -132,6 +148,21 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
     };
     save([task, ...store.tasks], `Created "${task.title}"`);
     setShowModal(false);
+  };
+
+  const handleModalKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      setShowModal(false);
+      return;
+    }
+    if (event.key === "Enter") {
+      const target = event.target as HTMLElement;
+      if (target.closest("textarea")) return;
+      if (!form.title.trim()) return;
+      event.preventDefault();
+      createTask();
+    }
   };
 
   return (
@@ -146,12 +177,13 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
 
       {showModal && (
         <div className="modal-overlay" onClick={() => setShowModal(false)}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} onKeyDown={handleModalKeyDown}>
             <div className="modal-title">New Task</div>
             <div className="modal-grid">
               <label>
                 <span>Title</span>
                 <input
+                  ref={titleRef}
                   value={form.title}
                   onChange={(e) => setForm({ ...form, title: e.target.value })}
                   placeholder="Task title"
@@ -220,6 +252,20 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
                   placeholder="What does done look like?"
                 />
               </label>
+              <label>
+                <span>Linked Doc (optional)</span>
+                <select
+                  value={form.docSlug}
+                  onChange={(e) => setForm({ ...form, docSlug: e.target.value })}
+                >
+                  <option value="">No doc linked</option>
+                  {docOptions.map((doc) => (
+                    <option key={doc.slug} value={doc.slug}>
+                      {doc.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
             </div>
             <div className="modal-actions">
               <button className="ghost-btn" onClick={() => setShowModal(false)}>Cancel</button>
@@ -241,6 +287,9 @@ export default function TasksBoard({ docs }: { docs: { slug: string; title: stri
           >
             <div className="kanban-col-title">{col.title}</div>
             <div className="kanban-cards">
+              {byStatus[col.key].length === 0 && (
+                <div className="empty-state">No tasks yet. Drop a card here.</div>
+              )}
               {byStatus[col.key].map((t) => (
                 <div
                   key={t.id}
